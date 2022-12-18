@@ -41,9 +41,7 @@ object Day5 extends Filereader {
       print(s._2.take(1).head)
     }
 
-    println("")
-
-    print("2: ")
+    print("\n2: ")
     for (s <- sorted2){
       print(s._2.take(1).head)
     }
