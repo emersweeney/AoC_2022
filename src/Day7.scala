@@ -4,6 +4,8 @@ import scala.util.Using
 /*
   1: Find all of the directories with a total size of at most 100000. What is the sum of the total sizes of those
   directories?
+  2: Find the smallest directory that, if deleted, would free up enough space on the filesystem to run the update.
+  What is the total size of that directory?
  */
 object Day7 extends Filereader {
 
@@ -32,9 +34,7 @@ object Day7 extends Filereader {
   }
 
   /* collect directories of size at most 100,000 to smallDirs list */
-
   var smallDirs: List[Directory] = List.empty
-
   def addSmallDirs(directory: Directory): Unit = {
     if (directory.getSize<=100000){
       val newList = smallDirs ++ List(directory)
@@ -43,13 +43,32 @@ object Day7 extends Filereader {
     directory.subDirectories.foreach(d => addSmallDirs(d))
   }
 
+  val totalDiskSpace = 70000000
+  val requiredSpace = 30000000
+  val usedSpace = workingDirectory.getSize
+  val freeSpace = totalDiskSpace-usedSpace
+  val spaceToFreeUp = requiredSpace-freeSpace
+
+  var potentialDirsToDelete: List[Directory] = List.empty
+  def addPotentialDirs(directory: Directory): Unit = {
+    if (directory.getSize>=spaceToFreeUp){
+      val newList = potentialDirsToDelete ++ List(directory)
+      potentialDirsToDelete = newList
+    } else ()
+    directory.subDirectories.foreach(d => addPotentialDirs(d))
+  }
+
   addSmallDirs(workingDirectory)
   println("1: "+ smallDirs.collect(d => d.getSize).sum)
+
+  addPotentialDirs(workingDirectory)
+  println("2: "+potentialDirsToDelete.min.getSize)
+
 }
 
 case class File(name: String, size: Int)
 
-case class Directory(name: String, parentDir: Directory){
+case class Directory(name: String, parentDir: Directory) extends Ordered[Directory]{
 
   var files: List[File] = List.empty
   var subDirectories: List[Directory] = List.empty
@@ -84,6 +103,8 @@ case class Directory(name: String, parentDir: Directory){
   }
 
   override def toString: String = "\n"+name+" ("+subDirectories.size+" directories, "+files.size+" files)"
+
+  def compare(that: Directory): Int = this.getSize compare that.getSize
 }
 
 case class Navigator(baseDir: Directory){
