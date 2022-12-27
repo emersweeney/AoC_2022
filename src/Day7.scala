@@ -12,7 +12,10 @@ object Day7 extends Filereader {
   /* base directory to act as pointer to root directory */
   val workingDirectory: Directory = Directory("Working Directory", null)
   val navigator = Navigator(workingDirectory)
+  val totalDiskSpace: Int = 70000000
+  val spaceManager = SpaceManager(workingDirectory, totalDiskSpace)
 
+  /* read input and delegate action */
   Using(Source.fromFile(filename)) {
     source =>
       for (line <- source.getLines()){
@@ -24,6 +27,7 @@ object Day7 extends Filereader {
       }
   }
 
+  /* execute linux commands */
   def execute(command: String): Unit = {
     command match {
       case "ls" => ()
@@ -33,37 +37,33 @@ object Day7 extends Filereader {
     }
   }
 
-  /* collect directories of size at most 100,000 to smallDirs list */
-  var smallDirs: List[Directory] = List.empty
-  def addSmallDirs(directory: Directory): Unit = {
-    if (directory.getSize<=100000){
-      val newList = smallDirs ++ List(directory)
-      smallDirs = newList
+  /* get all directories that pass boolean check */
+  def getDirectories(directory: Directory, check: Directory => Boolean): List[Directory] = {
+    var list: List[Directory] = List.empty
+    if (check(directory)){
+      val newList = list ++ List(directory)
+      list = newList
     } else ()
-    directory.subDirectories.foreach(d => addSmallDirs(d))
+    directory.subDirectories.foreach(
+      d => {
+        val newList = list ++ getDirectories(d, check)
+        list = newList
+      }
+    )
+    list
   }
 
-  val totalDiskSpace = 70000000
-  val requiredSpace = 30000000
-  val usedSpace = workingDirectory.getSize
-  val freeSpace = totalDiskSpace-usedSpace
-  val spaceToFreeUp = requiredSpace-freeSpace
+  /* get total size of all directories that have size less than or equal to 100 000 */
+  def smallDirsCheck(directory: Directory): Boolean = directory.getSize<=100000
+  val smallList = getDirectories(workingDirectory, smallDirsCheck)
+  println("1: "+ smallList.collect(d => d.getSize).sum)
 
-  var potentialDirsToDelete: List[Directory] = List.empty
-  def addPotentialDirs(directory: Directory): Unit = {
-    if (directory.getSize>=spaceToFreeUp){
-      val newList = potentialDirsToDelete ++ List(directory)
-      potentialDirsToDelete = newList
-    } else ()
-    directory.subDirectories.foreach(d => addPotentialDirs(d))
-  }
-
-  addSmallDirs(workingDirectory)
-  println("1: "+ smallDirs.collect(d => d.getSize).sum)
-
-  addPotentialDirs(workingDirectory)
-  println("2: "+potentialDirsToDelete.min.getSize)
-
+  /* get size of smallest directory with size at least 30 000 000 */
+  val requiredSpace: Int = 30000000
+  val spaceToFreeUp: Int = spaceManager.getSpaceNeedingFreed(requiredSpace)
+  def deletableDirsCheck(spaceToFreeUp: Int)(directory: Directory): Boolean = directory.getSize>=spaceToFreeUp
+  val deletableDirs = getDirectories(workingDirectory, deletableDirsCheck(spaceToFreeUp))
+  println("2: "+deletableDirs.min.getSize)
 }
 
 case class File(name: String, size: Int)
@@ -128,6 +128,14 @@ case class Navigator(baseDir: Directory){
     val arr = line.split(" ")
     val (name, size) = (arr(1), arr(0).toInt)
     currentDirectory.addFile(File(name, size))
+  }
+}
+
+case class SpaceManager(rootDir: Directory, totalDiskSpace: Int){
+  def getSpaceNeedingFreed(requiredSpace: Int): Int = {
+    val usedSpace = rootDir.getSize
+    val freeSpace = totalDiskSpace-usedSpace
+    requiredSpace-freeSpace
   }
 }
 
