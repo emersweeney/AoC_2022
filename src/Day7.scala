@@ -74,13 +74,17 @@ case class Directory(name: String, parentDir: Directory) extends Ordered[Directo
   var subDirectories: List[Directory] = List.empty
 
   def addFile(file: File): Unit = {
-    val newFiles = files.++(List(file))
-    files = newFiles
+    if (!files.exists(f => f.name == file.name)){
+      val newFiles = files.++(List(file))
+      files = newFiles
+    } else ()
   }
 
   def addDir(dir: Directory): Unit = {
-    val newDirs = subDirectories.++(List(dir))
-    subDirectories = newDirs
+    if (getDir(dir.name).isEmpty) {
+      val newDirs = subDirectories.++(List(dir))
+      subDirectories = newDirs
+    } else ()
   }
 
   def getDir(name: String): Option[Directory] = {
